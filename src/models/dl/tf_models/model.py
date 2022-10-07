@@ -73,17 +73,27 @@ class Model(object):
         pass
 
     def eval(self):
+        """模型评估"""
         pass
 
     def save_model(self, sess, path):
+        """
+        模型保存
+        :param sess:
+        :param path: 保存路径
+        """
         saver = tf.train.Saver()
         saver.save(sess, save_path=path + '.ckpt', global_step=self.global_step)
 
     def restore_model(self, sess, path):
+        """
+        模型恢复
+        :param sess:
+        :param path: 模型路径
+        """
         saver = tf.train.Saver()
         saver.restore(sess, save_path=path)
 
-    # ***********
     def parse_tfrecord(self, tfrecord):
         features = {}
         for col in self.feat_cols:
