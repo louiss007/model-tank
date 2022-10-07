@@ -152,7 +152,7 @@ class Model(object):
         :param tfrecord: tfrecord格式样本
         :return:
         """
-        feature_columns = tfrecord.feature_column
+        feature_columns = tf.parse_single_example(tfrecord)
         target_column = tfrecord.target
         features = {}
         for col in feature_columns:
