@@ -66,7 +66,7 @@ class Model(object):
         pass
 
     def build_model(self):
-        """构建模型，损失函数，优化器，学习算子等"""
+        """构建模型，定义损失函数，模型优化器，模型度量等算子"""
         y_hat = self.forward(self.X)
         if self.task_type is None or self.task_type == 'classification':
             self.out = tf.nn.softmax(logits=y_hat)
@@ -148,8 +148,8 @@ class Model(object):
 
     def parse_tfrecord(self, tfrecord):
         """
-
-        :param tfrecord:
+        通过解析TFrecord格式样本数据，返回x和y
+        :param tfrecord: tfrecord格式样本
         :return:
         """
         feature_columns = tfrecord.feature_column
@@ -165,7 +165,7 @@ class Model(object):
 
     def make_train_batch(self, tfrecord_files):
         """
-
+        TensorFlow训练数据持久化格式，通过加载tfrecord格式文件，将训练样本分批处理与训练
         :param tfrecord_files:
         :return:
         """
@@ -177,7 +177,7 @@ class Model(object):
 
     def make_test_batch(self, tfrecord_files, size=256):
         """
-
+        TensorFlow训练数据持久化格式，通过加载tfrecord格式文件，方便模型测试
         :param tfrecord_files:
         :param size:
         :return:
@@ -194,8 +194,8 @@ class Model(object):
     @staticmethod
     def check_shape(input_tensor):
         """
-
-        :param input_tensor:
+        检查输入数据形状
+        :param input_tensor: 输入张量
         :return:
         """
         print('============tensor shape==============')
