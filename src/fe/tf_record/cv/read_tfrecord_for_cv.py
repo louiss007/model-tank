@@ -7,88 +7,111 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-import os
 import tensorflow as tf
-import numpy as np
-from tensorflow.examples.tutorials.mnist import input_data
+
+flags = tf.app.flags
+flags.DEFINE_string('image_tfrecord_path',
+                    '../../data/tfrecord/cv/out/train.record',
+                    'path of tfrecord file')
+flags.DEFINE_integer('resize_height', 800, 'resize height of image')
+flags.DEFINE_integer('resize_width', 800, 'resize width of image')
+FLAG = flags.FLAGS
+slim = tf.contrib.slim
 
 
-def create_example(image, label):
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
-        'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label])),
-        'num1': tf.train.Feature(float_list=tf.train.FloatList(value=[12.555])),
-        'num2': tf.train.Feature(int64_list=tf.train.Int64List(value=[88]))
-    }))
-    return example
+def display_data(image, resized_image, label, height, width):
+    with tf.Session() as sess:
+        init_op = tf.global_variables_initializer()
+        sess.run(init_op)
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+        for i in range(10):
+            print("___________________image({})__________________".format(i))
+            p_image, p_resized_image, p_label, p_height, p_width = sess.run(
+                [image, resized_image, label, height, width])
+            print("resized_image shape is: ", p_resized_image.shape)
+            print("image shape is: ", p_image.shape)
+            print("image label is: ", p_label)
+            print("image height is: ", p_height)
+            print("image width is: ", p_width)
+        coord.request_stop()
+        coord.join(threads)
 
 
-def create_tfrecord(out_path, mnist_data_path='../../data/mnist'):
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
-    train_tfrecord_path = os.path.join(out_path, 'train.tfrecord')
-    test_tfrecord_path = os.path.join(out_path, 'test.tfrecord')
-    mnist = input_data.read_data_sets(train_dir=mnist_data_path, one_hot=True, validation_size=0)
-    with tf.io.TFRecordWriter(train_tfrecord_path) as train_writer:
-        print('执行训练数据生成')
-        for idx in range(mnist.train.num_examples):
-            image = mnist.train.images[idx]
-            label = mnist.train.labels[idx]
-            image = np.reshape(image, -1).astype(np.float32)
-            label = np.reshape(label, -1).astype(np.float32)
-            example = create_example(image.tobytes(), label.tobytes())
-            train_writer.write(example.SerializeToString())
-    with tf.io.TFRecordWriter(test_tfrecord_path) as test_writer:
-        print('执行测试数据生成')
-        for idx in range(mnist.test.num_examples):
-            image = mnist.test.images[idx]
-            label = mnist.test.labels[idx]
-            image = np.reshape(image, -1).astype(np.float32)
-            label = np.reshape(label, -1).astype(np.float32)
-            example = create_example(image.tobytes(), label.tobytes())
-            test_writer.write(example.SerializeToString())
+def reshape_same_size(image, output_height, output_width):
+    """Resize images by fixed sides.
 
+    Args:
+        image: A 3-D image `Tensor`.
+        output_height: The height of the image after preprocessing.
+        output_width: The width of the image after preprocessing.
 
-def load_tfrecord(tfrecord_file_path, batch_size, height, width, channels, n_class):
-    producer = tf.train.string_input_producer([tfrecord_file_path])
-    reader = tf.TFRecordReader()
-    _, serialized_example = reader.read(queue=producer)
-    features = tf.parse_single_example(serialized_example, features={
-        'image': tf.FixedLenFeature([], tf.string),
-        'label': tf.FixedLenFeature([], tf.string),
-        'num1': tf.FixedLenFeature([], tf.float32),
-        'num2': tf.FixedLenFeature([], tf.int64)
-    })
-    image = tf.decode_raw(features['image'], tf.float32)
-    label = tf.decode_raw(features['label'], tf.float32)
-    num1 = features['num1']
-    num2 = features['num2']
-    image = tf.reshape(image, shape=[height, width, channels])
-    label = tf.reshape(label, shape=[n_class])
-    image, label, num1, num2 = tf.train.shuffle_batch(
-        [image, label, num1, num2],
-        batch_size=batch_size,
-        capacity=batch_size*5,
-        num_threads=1,
-        min_after_dequeue=batch_size*2
+    Returns:
+        resized_image: A 3-D tensor containing the resized image.
+    """
+    output_height = tf.convert_to_tensor(output_height, dtype=tf.int32)
+    output_width = tf.convert_to_tensor(output_width, dtype=tf.int32)
+
+    image = tf.expand_dims(image, 0)
+    resized_image = tf.image.resize_nearest_neighbor(
+        image,
+        [output_height, output_width],
+        align_corners=False
     )
-    return image, label, num1, num2
+    resized_image = tf.squeeze(resized_image)
+    return resized_image
 
 
-def display_tfrecord(tfrecord_file):
-    item = next(tf.io.tf_record_iterator(tfrecord_file))
-    print(tf.train.Example.FromString(item))
+def read_tfrecord(tfrecord_path, num_samples=14635, num_classes=7, resize_height=800, resize_width=800):
+    image_features = {
+        'image/encoded': tf.FixedLenFeature([], default_value='', dtype=tf.string, ),
+        'image/format': tf.FixedLenFeature([], default_value='jpeg', dtype=tf.string),
+        'image/class/label': tf.FixedLenFeature([], tf.int64, default_value=0),
+        'image/height': tf.FixedLenFeature([], tf.int64, default_value=0),
+        'image/width': tf.FixedLenFeature([], tf.int64, default_value=0)
+    }
+
+    items_to_handlers = {
+        'image': slim.tfexample_decoder.Image(image_key='image/encoded', format_key='image/format', channels=3),
+        'label': slim.tfexample_decoder.Tensor('image/class/label', shape=[]),
+        'height': slim.tfexample_decoder.Tensor('image/height', shape=[]),
+        'width': slim.tfexample_decoder.Tensor('image/width', shape=[])
+    }
+    decoder = slim.tfexample_decoder.TFExampleDecoder(image_features, items_to_handlers)
+
+    labels_to_names = None
+    items_to_descriptions = {
+        'image': 'An image with shape image_shape.',
+        'label': 'A single integer between 0 and 9.'
+    }
+    dataset = slim.dataset.Dataset(
+        data_sources=tfrecord_path,
+        reader=tf.TFRecordReader,
+        decoder=decoder,
+        num_samples=num_samples,
+        items_to_descriptions=None,
+        num_classes=num_classes,
+    )
+
+    provider = slim.dataset_data_provider.DatasetDataProvider(dataset=dataset,
+                                                              num_readers=3,
+                                                              shuffle=True,
+                                                              common_queue_capacity=256,
+                                                              common_queue_min=128,
+                                                              seed=None)
+    image, label, height, width = provider.get(['image', 'label', 'height', 'width'])
+    resized_image = tf.squeeze(tf.image.resize_bilinear([image], size=[resize_height, resize_width]))
+    return resized_image, label, image, height, width
 
 
-def count_tfrecord(tfrecord_file):
-    count = 0
-    for _ in tf.io.tf_record_iterator(tfrecord_file):
-        count += 1
-    print("数据{} 的样本条数为\t{}".format(tfrecord_file, count))
+def main():
+    resized_image, label, image, height, width = read_tfrecord(tfrecord_path=FLAG.tfrecord_path,
+                                                               resize_height=FLAG.resize_height,
+                                                               resize_width=FLAG.resize_width)
+    # resized_image = reshape_same_size(image, FLAG.resize_height, FLAG.resize_width)
+    # resized_image = tf.squeeze(tf.image.resize_bilinear([image], size=[FLAG.resize_height, FLAG.resize_width]))
+    display_data(image, resized_image, label, height, width)
 
 
 if __name__ == '__main__':
-    out_path = '../../data/mnist'
-    # create_tfrecord(out_path)
-    # display_tfrecord('{op}/train.tfrecord'.format(op=out_path))
-    count_tfrecord('{op}/test.tfrecord'.format(op=out_path))
+    main()
