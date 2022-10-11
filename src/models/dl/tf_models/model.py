@@ -108,23 +108,31 @@ class Model(object):
                 })
             return loss, step
 
-    def predict(self, sess, x, y):
+    def predict(self, sess, x):
         """
         模型预测
         :param sess:
         :param x: 特征
-        :param y: y is None
         :return: y_hat
         """
         result = sess.run([self.out], feed_dict={
-            self.X: x,
-            self.Y: y
+            self.X: x
         })
         return result
 
-    def eval(self):
+    def eval(self, sess, x, y):
         """模型评估"""
-        pass
+        result = self.predict(sess, x)
+        if self.task_type == 'regression':
+            # huigui
+            loss = tf.reduce_mean(tf.square(result - y))
+            return loss
+        else:
+            # fenlei
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=result, labels=y))
+            corr_pred = tf.equal(tf.argmax(result, 1), tf.argmax(y, 1))
+            accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
+            return loss, accuracy
 
     def save_model(self, sess):
         """
@@ -152,7 +160,7 @@ class Model(object):
         :param tfrecord: tfrecord格式样本
         :return:
         """
-        feature_columns = tf.parse_single_example(tfrecord)
+        feature_columns = tf.parse_single_example(tfrecord)     # TODO
         target_column = tfrecord.target
         features = {}
         for col in feature_columns:

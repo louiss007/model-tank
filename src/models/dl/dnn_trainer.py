@@ -8,6 +8,7 @@
 ======================
 """
 import tensorflow as tf
+import os
 from utils.arg_parse import arg_parse
 from fnn import FnnModel
 from cnn import CnnModel
@@ -19,77 +20,71 @@ from gru import GruModel
 
 class DnnTrainer(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, task_type):
+        self.task_type = task_type
 
-    def train(self, train_files, test_files, model_para, model, task_type, is_train=True):
+    def train(self, model):
+        train_files = os.path.join(model.input, 'train.tfrecord')
+        test_files = os.path.join(model.input, 'dev.tfrecord')
         with tf.Session() as sess:
             variables_initner = tf.global_variables_initializer()
             tables_initner = tf.tables_initializer()
             sess.run(variables_initner)
             sess.run(tables_initner)
-            if is_train:
-                for epoch in range(model.epoch):
-                    _x, _y = model.make_one_batch(train_files)  # must in epoch loop, not in step loop
-                    for step in range(model.n_step):
-                        batch_x, batch_y = sess.run([_x, _y])
-                        if task_type is None or task_type == 'classification':
-                            loss, acc, global_step = model.fit(sess, batch_x, batch_y)
-                            if global_step % model_para.get('display_step') == 0:
-                                print('==========train loss:{0}, train acc:{1}, epoch:{2}, global step:{3}======'
-                                      .format(loss, acc, epoch, global_step))
-                                model.save_model(sess, model.model_path)
-                        if task_type == 'regression':
-                            loss, global_step = model.fit(sess, batch_x, batch_y)
-                            if global_step % model_para.get('display_step') == 0:
-                                print('==========train loss:{0}, epoch:{1}, global step:{2}======'
-                                      .format(loss, epoch, global_step))
-                                model.save_model(sess, model.model_path)
+            for epoch in range(model.epoch):
+                _x, _y = model.make_train_batch(train_files)  # must in epoch loop, not in step loop
+                for step in range(model.n_step):
+                    batch_x, batch_y = sess.run([_x, _y])
+                    if self.task_type == 'regression':
+                        loss, global_step = model.fit(sess, batch_x, batch_y)
+                        if global_step % model.display_step == 0:
+                            print('==========train loss:{0}, epoch:{1}, global step:{2}======'
+                                  .format(loss, epoch, global_step))
+                            model.save_model(sess, model.model_path)
+                    else:
+                        loss, acc, global_step = model.fit(sess, batch_x, batch_y)
+                        if global_step % model.display_step == 0:
+                            print('==========train loss:{0}, train acc:{1}, epoch:{2}, global step:{3}======'
+                                  .format(loss, acc, epoch, global_step))
+                            model.save_model(sess, model.model_path)
 
-                    print('===========validation start===========')
-                    test_x, test_y = model.make_batch(test_files)
-                    t_x, t_y = sess.run([test_x, test_y])
-                    if task_type is None or task_type == 'classification':
-                        loss, acc, _ = model.fit(sess, t_x, t_y)
-                        print('==========test loss:{0}, test acc:{1}, epoch:{2}======'
-                              .format(loss, acc, epoch))
-                        # model.save_model(sess, model.model_path)
-                    if task_type == 'regression':
-                        loss, _ = model.fit(sess, t_x, t_y)
-                        print('==========test loss:{0}, epoch:{1}======'
-                              .format(loss, epoch))
-
-            else:
-                test_n_step = model.test_sample_size // model.batch_size + 1
-                for _ in range(test_n_step):
-                    batch_x, batch_y = model.make_one_batch(test_files)
-                    _x, _y = sess.run([batch_x, batch_y])
-                    result = model.predict(sess, _x, _y)
+                print('===========validation start===========')
+                test_x, test_y = model.make_test_batch(test_files)
+                t_x, t_y = sess.run([test_x, test_y])
+                if self.task_type == 'regression':
+                    loss = model.eval(sess, t_x, t_y)
+                    print('==========eval loss:{0}, epoch:{1}======'.format(loss, epoch))
+                else:
+                    loss, acc = model.eval(sess, t_x, t_y)
+                    print('==========eval loss:{0}, eval acc:{1}, epoch:{2}======'.format(loss, acc, epoch))
 
 
-def main(task_type=None):
-    """
-    模型训练程序运行入口
-    :param task_type: 分类、回归或者排序
-    :return: null
-    """
-    task_description = 'dnn {} train task'.format(task_type)
+def main(_):
+    """模型训练程序运行入口"""
+    task_description = 'Dnn Model Train Task!'
     parser = arg_parse(task_description)
     args = parser.parse_args()
+    task_type = args.task_type
     model_name = args.model_name
-    batch_size = args.batch_size
-    epochs = args.epochs
-    lr = args.lr
+
     if model_name == 'fnn':
-        model = FnnModel()
+        model = FnnModel(args, task_type)
     elif model_name == 'cnn':
-        model = CnnModel()
+        model = CnnModel(args, task_type)
+    elif model_name == 'rnn':
+        model = RnnModel(args, task_type)
+    elif model_name == 'lstm':
+        model = LstmModel(args, task_type)
+    elif model_name == 'bilstm':
+        model = BilstmModel(args, task_type)
+    elif model_name == 'gru':
+        model = GruModel(args, task_type)
     else:
         print('model name %s is not supported!' % model_name)
         return
 
-    trainer = DnnTrainer()
-    trainer.train()
+    trainer = DnnTrainer(task_type)
+    trainer.train(model)
 
 
 if __name__ == '__main__':
