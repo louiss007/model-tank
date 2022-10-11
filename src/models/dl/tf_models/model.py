@@ -124,11 +124,11 @@ class Model(object):
         """模型评估"""
         result = self.predict(sess, x)
         if self.task_type == 'regression':
-            # huigui
+            # 回归
             loss = tf.reduce_mean(tf.square(result - y))
             return loss
         else:
-            # fenlei
+            # 分类
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=result, labels=y))
             corr_pred = tf.equal(tf.argmax(result, 1), tf.argmax(y, 1))
             accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
