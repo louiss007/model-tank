@@ -41,7 +41,7 @@ class DnnTrainer(object):
 
     def train(self, model):
         """
-        single machine training format
+        single machine training for supervised learning
         :param model:
         :return:
         """
@@ -84,7 +84,7 @@ class DnnTrainer(object):
 
     def train_unsupervised(self, model):
         """
-
+        single machine training for unsupervised learning
         :param model:
         :return:
         """
