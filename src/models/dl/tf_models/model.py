@@ -27,28 +27,31 @@ class Model(object):
         self.out = None
         self.task_type = task_type
 
-        # hyper paras of model
-        self.epoch = args.epoch
-        self.batch_size = args.batch_size
-        self.dropout = args.dropout
-        self.learning_rate = args.learning_rate
-
-        # model paras
-        self.input_size = args.input_size
-        self.layers = args.layers
-        self.nclass = args.nclass
-
         # io paras
         self.input = args.input
         self.output = args.output
 
+        # hyper paras of model
+        self.epochs = args.epochs
+        self.batch_size = args.batch_size
+        self.dropout = args.dropout
+        self.lr = args.lr
+        self.train_steps = self.count_tfrecord(self.input) // self.batch_size
+
+        # model paras
+        self.layers = [int(i) for i in args.layers.split(',')]
+        self.nclass = args.nclass
+        self.input_size = int(self.layers[0])
+
         # state record during model learning
         self.global_step = tf.Variable(0, trainable=False)
-        if self.task_type == 'regression':
-            self.nclass = 1
-            self.loss, self.train_op = self.build_model()
-        else:
-            self.loss, self.train_op, self.accuracy = self.build_model()
+        self.display_step = args.display_step
+        # self.init_net()
+        # if self.task_type == 'regression':
+        #     self.nclass = 1
+        #     self.loss, self.train_op = self.build_model()
+        # else:
+        #     self.loss, self.train_op, self.accuracy = self.build_model()
 
     @abc.abstractmethod
     def init_net(self):
@@ -59,7 +62,7 @@ class Model(object):
     @abc.abstractmethod
     def forward(self, x):
         """
-        网络结构，正向传播输出，可以替换为其他任意构造的网络结构
+        网络结构，qian向传播，可以替换为其他任意构造的网络结构
         :param x: input tensor
         :return:
         """
@@ -71,18 +74,20 @@ class Model(object):
         if self.task_type is None or self.task_type == 'classification':
             self.out = tf.nn.softmax(logits=y_hat)
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat, labels=self.Y))
-            optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             train_op = optimizer.minimize(loss, global_step=self.global_step)
             corr_pred = tf.equal(tf.argmax(self.out, 1), tf.argmax(self.Y, 1))
             accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
+            self.loss = loss
             return loss, train_op, accuracy
 
         if self.task_type == 'regression':
             loss = tf.reduce_mean(tf.square(y_hat - self.Y))
             # loss = tf.reduce_mean(tf.square(y_hat - self.Y), keep_dims=False)
-            optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             train_op = optimizer.minimize(loss, global_step=self.global_step)
             self.out = y_hat
+            self.loss = loss
             return loss, train_op
 
     def fit(self, sess, batch_x, batch_y):
@@ -108,31 +113,41 @@ class Model(object):
                 })
             return loss, step
 
-    def predict(self, sess, x):
+    def predict(self, sess, x):     # TODO
         """
         模型预测
         :param sess:
         :param x: 特征
         :return: y_hat
         """
+        import numpy as np
         result = sess.run([self.out], feed_dict={
             self.X: x
         })
-        return result
+        return np.array(np.reshape(result, [-1, self.nclass]))
 
     def eval(self, sess, x, y):
-        """模型评估"""
-        result = self.predict(sess, x)
+        """
+        模型评估, don't execute self.train_op in sess.run()
+        :param sess:
+        :param x:
+        :param y:
+        :return:
+        """
+        if self.task_type is None or self.task_type == 'classification':
+            loss, acc = sess.run(
+                [self.loss, self.accuracy], feed_dict={
+                    self.X: x,
+                    self.Y: y
+                })
+            return loss, acc
         if self.task_type == 'regression':
-            # 回归
-            loss = tf.reduce_mean(tf.square(result - y))
+            loss = sess.run(
+                [self.loss], feed_dict={
+                    self.X: x,
+                    self.Y: y
+                })
             return loss
-        else:
-            # 分类
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=result, labels=y))
-            corr_pred = tf.equal(tf.argmax(result, 1), tf.argmax(y, 1))
-            accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
-            return loss, accuracy
 
     def save_model(self, sess):
         """
@@ -142,7 +157,7 @@ class Model(object):
         saver = tf.train.Saver()
         saver.save(
             sess,
-            save_path=os.path.join(self.input, self.__name__) + '.ckpt',
+            save_path=os.path.join(self.output, self.__class__.__name__) + '.ckpt',
             global_step=self.global_step
         )
 
@@ -154,36 +169,64 @@ class Model(object):
         saver = tf.train.Saver()
         saver.restore(sess, save_path=self.output)
 
-    def parse_tfrecord(self, tfrecord):
+    def parse_tfrecord(self, tfrecord, record_type='mnist'):
         """
         通过解析TFrecord格式样本数据，返回x和y
         :param tfrecord: tfrecord格式样本
+        :param record_type: cv/nlp/rs/mnist
         :return:
         """
-        feature_columns = tf.parse_single_example(tfrecord)     # TODO
-        target_column = tfrecord.target
-        features = {}
-        for col in feature_columns:
-            features.setdefault(col, tf.FixedLenFeature([], tf.float32))
-        features.setdefault(target_column, tf.FixedLenFeature([], tf.float32))
-        example = tf.parse_single_example(tfrecord, features=features)
-        x = [example[col] for col in feature_columns]
-        y = [example[target_column]]
-        return x, y
+        if record_type == 'mnist':
+            # features = {
+            #     'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.string])),
+            #     'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.string])),
+            #     'num1': tf.train.Feature(float_list=tf.train.FloatList(value=[tf.float32])),
+            #     'num2': tf.train.Feature(int64_list=tf.train.Int64List(value=[tf.int64]))
+            # }
+            features = {
+                'image': tf.FixedLenFeature([], tf.string),
+                'label': tf.FixedLenFeature([], tf.string),
+                'num1': tf.FixedLenFeature([], tf.float32),
+                'num2': tf.FixedLenFeature([], tf.int64)
+            }
+            example = tf.parse_single_example(tfrecord, features=features)
+            image = tf.decode_raw(example['image'], tf.float32)
+            label = tf.decode_raw(example['label'], tf.float32)
+            # num1 = example['num1']
+            # num2 = example['num2']
+            image = tf.reshape(image, shape=[28, 28, 1])
+            image = tf.reshape(image, shape=[784])
+            label = tf.reshape(label, shape=[self.nclass])
+            return image, label
+        elif record_type == 'cv':
+            pass
+        elif record_type == 'nlp':
+            pass
+        elif record_type == 'rs':
+            features = {}
+            for col in self.feat_cols:
+                features.setdefault(col, tf.FixedLenFeature([], tf.float32))
+            features.setdefault(self.target, tf.FixedLenFeature([], tf.float32))
+            example = tf.parse_single_example(tfrecord, features=features)
+            x = [example[col] for col in self.feat_cols]
+            y = [example[self.target]]
+            return x, y
+        else:
+            return None, None
 
-    def make_train_batch(self, tfrecord_files):
+    def make_train_batch(self, tfrecord_files, record_type='mnist'):
         """
         TensorFlow训练数据持久化格式，通过加载tfrecord格式文件，将训练样本分批处理与训练
         :param tfrecord_files:
         :return:
         """
         dataset = tf.data.TFRecordDataset(tfrecord_files)
-        dataset = dataset.map(self.parse_tfrecord).batch(self.batch_size)
+        dataset = dataset.map(lambda x: self.parse_tfrecord(x, record_type)).batch(self.batch_size)
         iterator = dataset.make_one_shot_iterator()
         batch_x, batch_y = iterator.get_next()
         return batch_x, batch_y
 
-    def make_test_batch(self, tfrecord_files, size=256):
+    def make_test_batch(self, tfrecord_files, record_type='mnist', size=256):
         """
         TensorFlow训练数据持久化格式，通过加载tfrecord格式文件，方便模型测试
         :param tfrecord_files:
@@ -192,9 +235,9 @@ class Model(object):
         """
         dataset = tf.data.TFRecordDataset(tfrecord_files)
         if size is None or size == 0:
-            dataset = dataset.map(self.parse_tfrecord)
+            dataset = dataset.map(lambda x: self.parse_tfrecord(x, record_type))
         else:
-            dataset = dataset.map(self.parse_tfrecord).batch(size)
+            dataset = dataset.map(lambda x: self.parse_tfrecord(x, record_type)).batch(size)
         iterator = dataset.make_one_shot_iterator()
         batch_x, batch_y = iterator.get_next()
         return batch_x, batch_y
@@ -209,3 +252,16 @@ class Model(object):
         print('============tensor shape==============')
         print(input_tensor.op.name, ' ', input_tensor.get_shape().as_list())
         print('============tensor shape==============')
+
+    @staticmethod
+    def display_tfrecord(tfrecord_file):
+        item = next(tf.io.tf_record_iterator(tfrecord_file))
+        print(tf.train.Example.FromString(item))
+
+    @staticmethod
+    def count_tfrecord(tfrecord_file):
+        count = 0
+        for _ in tf.io.tf_record_iterator(tfrecord_file):
+            count += 1
+        print("数据{} 的样本条数为\t{}".format(tfrecord_file, count))
+        return count

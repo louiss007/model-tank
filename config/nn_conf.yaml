@@ -1,0 +1,222 @@
+# basic feedforward neural network
+fnn:
+  # parameters
+  learning_rate: 0.1
+  num_steps: 500
+  batch_size: 128
+  epoch: 3
+  display_step: 100
+  dropout: 0.7
+
+  # network paras
+  layers: [300, 256, 256]
+  num_input: 784 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 256 # 1st layer number of neurons
+  n_hidden_2: 256 # 2nd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# convolution neural network
+cnn:
+  # parameters
+  learning_rate: 0.001
+  num_steps: 200
+  batch_size: 128
+  epoch: 1
+  display_step: 10
+  dropout: 1.0
+
+  # network paras
+  layers: [784, 32, 64, 1024]
+  num_input: 784 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 32 # 1st layer number of neurons
+  n_hidden_2: 64 # 2nd layer number of neurons
+  n_hidden_3: 1024 # 3rd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# alexnet of convolution neural network
+alexnet:
+  # parameters
+  learning_rate: 0.001
+  num_steps: 200
+  batch_size: 128
+  epoch: 1
+  display_step: 10
+  dropout: 1.0
+
+  # network paras
+  layers: [784, 32, 64, 1024]
+  num_input: 784 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 32 # 1st layer number of neurons
+  n_hidden_2: 64 # 2nd layer number of neurons
+  n_hidden_3: 1024 # 3rd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# vanilla rnn
+rnn:
+  # parameters
+  learning_rate: 0.001
+  num_steps: 10000
+  batch_size: 128
+  epoch: 25
+  display_step: 200
+  dropout: 1.0
+
+  # network paras
+  layers: [28, 128]
+  num_input: 28 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 128 # 1st layer number of neurons
+  n_hidden_2: 256 # 2nd layer number of neurons
+  n_hidden_3: 512 # 3rd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# long short term memory instead of original rnn
+lstm:
+  # parameters
+  learning_rate: 0.001
+  num_steps: 10000
+  batch_size: 128
+  epoch: 25
+  display_step: 200
+  dropout: 1.0
+
+  # network paras
+  layers: [28, 128]
+  num_input: 28 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 128 # 1st layer number of neurons
+  n_hidden_2: 256 # 2nd layer number of neurons
+  n_hidden_3: 512 # 3rd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# bidirectional lstm
+bilstm:
+  # parameters
+  learning_rate: 0.001
+  num_steps: 10000
+  batch_size: 128
+  epoch: 25
+  display_step: 200
+  dropout: 1.0
+
+  # network paras
+  layers: [28, 128]
+  num_input: 28 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 128 # 1st layer number of neurons
+  n_hidden_2: 256 # 2nd layer number of neurons
+  n_hidden_3: 512 # 3rd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# gated recurrent unit
+gru:
+  # parameters
+  learning_rate: 0.001
+  num_steps: 10000
+  batch_size: 128
+  epoch: 25
+  display_step: 200
+  dropout: 1.0
+
+  # network paras
+  layers: [28, 128]
+  num_input: 28 # MNIST data input (img shape: 28*28)
+  n_hidden_1: 128 # 1st layer number of neurons
+  n_hidden_2: 256 # 2nd layer number of neurons
+  n_hidden_3: 512 # 3rd layer number of neurons
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# generative adversarial network
+gan:
+  # parameters
+  learning_rate: 0.0002
+  num_steps: 100000
+  batch_size: 128
+  epoch: 3
+  display_step: 100
+  dropout: 0.7
+
+  # network paras
+  layers: [784, 256, 256]
+  num_input: 784 # MNIST data input (img shape: 28*28)
+  g_hidden: 256 # neurons of hidden layer of generate network
+  d_hidden: 256 # neurons of hidden layer of discriminate network
+  noise_dim: 100
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# deep convolutional generative adversarial network
+dcgan:
+  # parameters
+  learning_rate: 0.0002
+  num_steps: 20000
+  batch_size: 32
+  epoch: 2
+  display_step: 100
+  dropout: 0.7
+
+  # network paras
+  layers: [784, 256, 256]
+  num_input: 784 # MNIST data input (img shape: 28*28)
+  g_hidden: 256 # neurons of hidden layer of generate network
+  d_hidden: 256 # neurons of hidden layer of discriminate network
+  noise_dim: 200
+  num_classes: 10 # MNIST total classes (0-9 digits)
+
+# graph neural network
+gnn:
+
+# input data for classical machine learning and fnn
+in:
+  data_path: ../data/ubiquant-market-prediction
+  train_sample_size: 3141410
+  test_sample_size: 200000
+
+# input data for cnn model
+cnn_in:
+  data_path: ../data/mnist
+  train_sample_size: 25600
+  test_sample_size: 10000
+
+# input data for alexnet model
+alexnet_in:
+  data_path: ../data/mnist
+  train_sample_size: 25600
+  test_sample_size: 10000
+
+# input data for vanilla rnn model
+rnn_in:
+  data_path: ../data/mnist
+  train_sample_size: 60000
+  test_sample_size: 10000
+
+# input data for lstm model
+lstm_in:
+  data_path: ../data/mnist
+  train_sample_size: 60000
+  test_sample_size: 10000
+
+# input data for bilstm model
+bilstm_in:
+  data_path: ../data/mnist
+  train_sample_size: 60000
+  test_sample_size: 10000
+
+# input data for gru model
+gru_in:
+  data_path: ../data/mnist
+  train_sample_size: 60000
+  test_sample_size: 10000
+
+# input data for gan model
+gan_in:
+  data_path: ../data/mnist
+  train_sample_size: 60000
+  test_sample_size: 10000
+
+# input data for dcgan model
+dcgan_in:
+  data_path: ../data/mnist
+  train_sample_size: 60000
+  test_sample_size: 10000
+
+# output path for all models
+out:
+  model_path: ../out
+  dump_path: ../out

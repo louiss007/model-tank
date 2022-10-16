@@ -85,10 +85,14 @@ def count_tfrecord(tfrecord_file):
     for _ in tf.io.tf_record_iterator(tfrecord_file):
         count += 1
     print("数据{} 的样本条数为\t{}".format(tfrecord_file, count))
+    return count
 
 
 if __name__ == '__main__':
-    out_path = '../../data/mnist'
+    out_path = '/home/louiss007/MyWorkShop/model/Practice/model-tank/data/cv/mnist'
+
     # create_tfrecord(out_path)
     # display_tfrecord('{op}/train.tfrecord'.format(op=out_path))
-    count_tfrecord('{op}/test.tfrecord'.format(op=out_path))
+    # count_tfrecord('{op}/test.tfrecord'.format(op=out_path))
+    mnist = input_data.read_data_sets(train_dir=out_path, one_hot=True, validation_size=0)
+    print(mnist.train.images[0].shape[0])

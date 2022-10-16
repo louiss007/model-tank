@@ -7,7 +7,7 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from model import Model
+from src.models.dl.tf_models.model import Model
 import tensorflow as tf
 import numpy as np
 
@@ -17,6 +17,11 @@ class FnnModel(Model):
     def __init__(self, args, task_type=None):
         Model.__init__(self, args, task_type)
         self.init_net()
+        if self.task_type == 'regression':
+            self.nclass = 1
+            self.loss, self.train_op = self.build_model()
+        else:
+            self.loss, self.train_op, self.accuracy = self.build_model()
 
     def init_net(self):
         self.X = tf.placeholder(tf.float32, [None, self.layers[0]])

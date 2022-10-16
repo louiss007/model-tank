@@ -7,7 +7,7 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from model import Model
+from src.models.dl.tf_models.model import Model
 import tensorflow as tf
 
 
@@ -17,6 +17,11 @@ class RnnModel(Model):
         Model.__init__(self, args, task_type)
         self.time_steps = None
         self.init_net()
+        if self.task_type == 'regression':
+            self.nclass = 1
+            self.loss, self.train_op = self.build_model()
+        else:
+            self.loss, self.train_op, self.accuracy = self.build_model()
 
     def init_net(self):
         self.time_steps = 28
@@ -53,7 +58,7 @@ class RnnModel(Model):
         if self.task_type is None or self.task_type == 'classification':
             self.out = tf.nn.softmax(logits=y_hat)
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat, labels=self.Y))
-            optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
             train_op = optimizer.minimize(loss, global_step=self.global_step)
             corr_pred = tf.equal(tf.argmax(self.out, 1), tf.argmax(self.Y, 1))
             accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
@@ -62,12 +67,12 @@ class RnnModel(Model):
         if self.task_type == 'regression':
             loss = tf.reduce_mean(tf.square(y_hat - self.Y))
             # loss = tf.reduce_mean(tf.square(y_hat - self.Y), keep_dims=False)
-            optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
             train_op = optimizer.minimize(loss, global_step=self.global_step)
             self.out = y_hat
             return loss, train_op
 
-    def parse_tfrecord(self, tfrecord):
+    def parse_tfrecord(self, tfrecord, record_type='mnist'):
         example = tf.parse_single_example(tfrecord, features={
             'image': tf.FixedLenFeature([], tf.string),
             'label': tf.FixedLenFeature([], tf.string),

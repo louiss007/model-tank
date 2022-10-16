@@ -7,7 +7,7 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from model import Model
+from src.models.dl.tf_models.model import Model
 import tensorflow as tf
 
 
@@ -19,6 +19,11 @@ class CnnModel(Model):
         self.width = 28
         self.channels = 1
         self.init_net()
+        if self.task_type == 'regression':
+            self.nclass = 1
+            self.loss, self.train_op = self.build_model()
+        else:
+            self.loss, self.train_op, self.accuracy = self.build_model()
 
     def init_net(self):
         self.X = tf.placeholder(tf.float32, [None, self.layers[0]])
@@ -39,7 +44,7 @@ class CnnModel(Model):
             'bc1': tf.Variable(tf.random_normal([32])),
             'bc2': tf.Variable(tf.random_normal([64])),
             'bd1': tf.Variable(tf.random_normal([1024])),
-            'out': tf.Variable(tf.random_normal([self.num_classes]))
+            'out': tf.Variable(tf.random_normal([self.nclass]))
         }
 
         # TODO modify to for loop
@@ -70,23 +75,13 @@ class CnnModel(Model):
         out = tf.add(tf.matmul(fc1, self.weights['out']), self.biases['out'])
         return out
 
-    def parse_tfrecord(self, tfrecord):
-        """
+    def conv2d(self, x, W, b, strides=1, name=None):
+        # Conv2D wrapper, with bias and relu activation
+        x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME', name=name)
+        x = tf.nn.bias_add(x, b)
+        return tf.nn.relu(x)
 
-        :param tfrecord:
-        :return:
-        """
-        example = tf.parse_single_example(tfrecord, features={
-            'image': tf.FixedLenFeature([], tf.string),
-            'label': tf.FixedLenFeature([], tf.string),
-            'num1': tf.FixedLenFeature([], tf.float32),
-            'num2': tf.FixedLenFeature([], tf.int64)
-        })
-        image = tf.decode_raw(example['image'], tf.float32)
-        label = tf.decode_raw(example['label'], tf.float32)
-        # num1 = example['num1']
-        # num2 = example['num2']
-        image = tf.reshape(image, shape=[self.height, self.width, self.channels])
-        image = tf.reshape(image, shape=[self.layers[0]])
-        label = tf.reshape(label, shape=[self.num_classes])
-        return image, label
+    def maxpool2d(self, x, k=2, name=None):
+        # MaxPool2D wrapper
+        return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME', name=name)
+

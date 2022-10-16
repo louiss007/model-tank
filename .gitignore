@@ -140,7 +140,7 @@ train_small.tfrecord
 *.gz
 *.jpg
 
-out/
+output/
 *.ckpt*
 checkpoint
 

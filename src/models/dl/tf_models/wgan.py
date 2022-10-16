@@ -7,10 +7,10 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from model import Model
+from src.models.dl.tf_models.model import Model
 
 
 class WganModel(Model):
-    """D C Generial"""
+    """Wasserstein Generative Adversarial Network"""
     def __init__(self, args, task_type=None):
         Model.__init__(self, args, task_type)

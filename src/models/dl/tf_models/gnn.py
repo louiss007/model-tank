@@ -7,7 +7,7 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from model import Model
+from src.models.dl.tf_models.model import Model
 
 
 class GnnModel(Model):

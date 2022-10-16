@@ -7,7 +7,7 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from rnn import RnnModel
+from src.models.dl.tf_models.rnn import RnnModel
 import tensorflow as tf
 
 
@@ -17,6 +17,11 @@ class GruModel(RnnModel):
         RnnModel.__init__(self, args, task_type)
         self.time_steps = None
         self.init_net()
+        if self.task_type == 'regression':
+            self.nclass = 1
+            self.loss, self.train_op = self.build_model()
+        else:
+            self.loss, self.train_op, self.accuracy = self.build_model()
 
     def init_net(self):
         self.time_steps = 28

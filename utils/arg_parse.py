@@ -13,26 +13,31 @@ import argparse
 def arg_parse(task_description):
     # Training settings
     parser = argparse.ArgumentParser(description='{}'.format(task_description))
+    parser.add_argument('--task-type', type=str, default='classification', metavar='c/r',
+                        help='input task type for training (default: classification)')
+    parser.add_argument('--model-name', type=str, default='fnn', metavar='model',
+                        help='input model type for training (default: fnn)')
+
+    parser.add_argument('--epochs', type=int, default=1, metavar='N',
+                        help='number of epochs to train (default: 1)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-                        help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=14, metavar='N',
-                        help='number of epochs to train (default: 14)')
-    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
-                        help='learning rate (default: 1.0)')
-    parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
-                        help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
-                        help='disables CUDA training')
-    parser.add_argument('--no-mps', action='store_true', default=False,
-                        help='disables macOS GPU training')
-    parser.add_argument('--dry-run', action='store_true', default=False,
-                        help='quickly check a single pass')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
-                        help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                        help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
-                        help='For Saving the current Model')
+    parser.add_argument('--dropout', type=float, default=1.0, metavar='F',
+                        help='input batch size for testing (default: 1.0)')
+    parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
+                        help='learning rate (default: 0.001)')
+
+    parser.add_argument('--input-size', type=int, default=28, metavar='IN',
+                        help='size of input layer (default: 28)')
+    parser.add_argument('--layers', type=str, default='784,128,256,32', metavar='layer',
+                        help='hidden layer of model (default: 128,256,32)')
+    parser.add_argument('--nclass', type=int, default=10, metavar='NC',
+                        help='size of output layer (default: 10)')
+
+    parser.add_argument('--input', type=str, required=True, metavar='input',
+                        help='input training data file')
+    parser.add_argument('--output', type=str, required=True, metavar='output',
+                        help='output path for saving model')
+    parser.add_argument('--display-step', type=int, default=200, metavar='N',
+                        help='how many steps to display training process (default: 200)')
     return parser
