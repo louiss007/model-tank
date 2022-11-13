@@ -25,8 +25,8 @@ class GruModel(RnnModel):
 
     def init_net(self):
         self.time_steps = 28
-        self.X = tf.placeholder(tf.float32, [None, self.time_steps, self.layers[0]])
-        self.Y = tf.placeholder(tf.float32, [None, self.nclass])
+        self.X = tf.placeholder(tf.float32, [None, self.time_steps, self.layers[0]], name='input_x')
+        self.Y = tf.placeholder(tf.float32, [None, self.nclass], name='input_y')
         self.weights = {
             'out': tf.Variable(tf.random_normal([self.layers[1], self.nclass]))
         }

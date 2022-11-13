@@ -31,9 +31,9 @@ def create_tfrecord(out_path, mnist_data_path='../../data/mnist'):
     mnist = input_data.read_data_sets(train_dir=mnist_data_path, one_hot=True, validation_size=0)
     with tf.io.TFRecordWriter(train_tfrecord_path) as train_writer:
         print('执行训练数据生成')
-        for idx in range(mnist.train.num_examples):
-            image = mnist.train.images[idx]
-            label = mnist.train.labels[idx]
+        for idx in range(mnist.train_and_eval.num_examples):
+            image = mnist.train_and_eval.images[idx]
+            label = mnist.train_and_eval.labels[idx]
             image = np.reshape(image, -1).astype(np.float32)
             label = np.reshape(label, -1).astype(np.float32)
             example = create_example(image.tobytes(), label.tobytes())
@@ -95,4 +95,4 @@ if __name__ == '__main__':
     # display_tfrecord('{op}/train.tfrecord'.format(op=out_path))
     # count_tfrecord('{op}/test.tfrecord'.format(op=out_path))
     mnist = input_data.read_data_sets(train_dir=out_path, one_hot=True, validation_size=0)
-    print(mnist.train.images[0].shape[0])
+    print(mnist.train_and_eval.images[0].shape[0])

@@ -25,6 +25,9 @@ class Model(object):
         self.X = None
         self.Y = None
         self.out = None
+        self.loss = None
+        self.train_op = None
+        self.accuracy = None
         self.task_type = task_type
 
         # io paras
@@ -72,23 +75,21 @@ class Model(object):
         """构建模型，定义损失函数，模型优化器，模型度量等算子"""
         y_hat = self.forward(self.X)
         if self.task_type is None or self.task_type == 'classification':
-            self.out = tf.nn.softmax(logits=y_hat)
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat, labels=self.Y))
+            self.out = tf.nn.softmax(logits=y_hat, name='y_sm')
+            self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat, labels=self.Y))
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-            train_op = optimizer.minimize(loss, global_step=self.global_step)
+            self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
             corr_pred = tf.equal(tf.argmax(self.out, 1), tf.argmax(self.Y, 1))
-            accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
-            self.loss = loss
-            return loss, train_op, accuracy
+            self.accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
+            return self.loss, self.train_op, self.accuracy
 
         if self.task_type == 'regression':
-            loss = tf.reduce_mean(tf.square(y_hat - self.Y))
+            self.loss = tf.reduce_mean(tf.square(y_hat - self.Y))
             # loss = tf.reduce_mean(tf.square(y_hat - self.Y), keep_dims=False)
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-            train_op = optimizer.minimize(loss, global_step=self.global_step)
+            self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
             self.out = y_hat
-            self.loss = loss
-            return loss, train_op
+            return self.loss, self.train_op
 
     def fit(self, sess, batch_x, batch_y):
         """
@@ -151,14 +152,31 @@ class Model(object):
 
     def save_model(self, sess):
         """
-        模型保存
+        模型保存, used by tf.train.Saver()
         :param sess:
         """
         saver = tf.train.Saver()
         saver.save(
             sess,
-            save_path=os.path.join(self.output, self.__class__.__name__) + '.ckpt',
-            global_step=self.global_step
+            save_path=os.path.join(self.output, self.__class__.__name__.lower()) + '.ckpt',
+            # global_step=self.global_step
+        )
+
+    def save_model_pb(self, sess, input_feed, output_feed):
+        """
+        model save, used by tf.saved_model
+        :param sess:
+        :param input_feed: a map, such as {"input": x, 'keep_prob': keep_prob}
+        :param output_feed: a map, such as  {"output": y_conv}
+        :return:
+        """
+        if tf.gfile.Exists(self.output+'/saved_model'):
+            tf.gfile.DeleteRecursively(self.output+'/saved_model')
+        tf.compat.v1.saved_model.simple_save(
+            sess,
+            self.output+'/saved_model',
+            inputs=input_feed,
+            outputs=output_feed
         )
 
     def restore_model(self, sess):
@@ -169,9 +187,33 @@ class Model(object):
         saver = tf.train.Saver()
         saver.restore(sess, save_path=self.output)
 
+    def load_model_pb(self, sess, is_saved_model=False):
+        """
+        load ckpt_to_pb model with tf.GraphDef(), saved_model pb with tf.saved_model
+        :param sess:
+        :param model_file:
+        :param model_format:
+        :return:
+        """
+        if not is_saved_model:
+            model_file = os.path.join(
+                self.output, '{}model.pb'.format(self.__class__.__name__.lower())
+            )
+            with tf.gfile.FastGFile(model_file, 'rb') as fd:
+                # 导入图
+                graph_def = tf.GraphDef()
+                graph_def.ParseFromString(fd.read())
+                sess.graph.as_default()
+                tf.import_graph_def(graph_def, name='')
+                # return graph_def  # make no sense
+        else:
+            tf.compat.v1.saved_model.loader.load(
+                sess, ["serve"], os.path.join(self.output, 'saved_model')
+            )
+
     def parse_tfrecord(self, tfrecord, record_type='mnist'):
         """
-        通过解析TFrecord格式样本数据，返回x和y
+        通过解析TFrecord格式样本，返回x和y
         :param tfrecord: tfrecord格式样本
         :param record_type: cv/nlp/rs/mnist
         :return:

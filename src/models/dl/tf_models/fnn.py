@@ -24,8 +24,8 @@ class FnnModel(Model):
             self.loss, self.train_op, self.accuracy = self.build_model()
 
     def init_net(self):
-        self.X = tf.placeholder(tf.float32, [None, self.layers[0]])
-        self.Y = tf.placeholder(tf.float32, [None, self.nclass])
+        self.X = tf.placeholder(tf.float32, [None, self.layers[0]], name='input_x')
+        self.Y = tf.placeholder(tf.float32, [None, self.nclass], name='input_y')
         if len(self.layers) != 1:
             for i in range(1, len(self.layers)):
                 init_method = np.sqrt(2.0 / (self.layers[i - 1] + self.layers[i]))

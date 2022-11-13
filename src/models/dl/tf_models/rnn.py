@@ -25,8 +25,8 @@ class RnnModel(Model):
 
     def init_net(self):
         self.time_steps = 28
-        self.X = tf.placeholder(tf.float32, [None, self.time_steps, self.layers[0]])
-        self.Y = tf.placeholder(tf.float32, [None, self.nclass])
+        self.X = tf.placeholder(tf.float32, [None, self.time_steps, self.layers[0]], name='input_x')
+        self.Y = tf.placeholder(tf.float32, [None, self.nclass], name='input_y')
         self.weights = {
             'out': tf.Variable(tf.random_normal([self.layers[1], self.nclass]))
         }
@@ -56,7 +56,7 @@ class RnnModel(Model):
         """
         y_hat = self.forward(self.X)
         if self.task_type is None or self.task_type == 'classification':
-            self.out = tf.nn.softmax(logits=y_hat)
+            self.out = tf.nn.softmax(logits=y_hat, name='y_sm')
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat, labels=self.Y))
             optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
             train_op = optimizer.minimize(loss, global_step=self.global_step)

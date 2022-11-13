@@ -134,14 +134,14 @@ def build_int_feature(values):
 
 
 if __name__ == '__main__':
-    in_trin_file = '../data/train.json'
-    train_tf_record = '../data/train.tf_record'
+    in_train_file = '../data/train.json'
+    train_tf_record = '../data/train.tfrecord'
     in_dev_file = '../data/dev.json'
-    dev_tf_record = '../data/dev.tf_record'
+    dev_tf_record = '../data/dev.tfrecord'
 
     vocab_file = 'vocab.txt'
     tokenizer = tokenization.FullTokenizer(vocab_file=vocab_file)
     label2id = json.loads(open('label2id.json').read())
     max_seq_len = 64
-    text_to_tfrecord_for_ner(in_file=in_trin_file, tf_record_file=train_tf_record)
+    text_to_tfrecord_for_ner(in_file=in_train_file, tf_record_file=train_tf_record)
     text_to_tfrecord_for_ner(in_file=in_dev_file, tf_record_file=dev_tf_record)

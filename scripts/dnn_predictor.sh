@@ -54,26 +54,16 @@ else
     layers=784,128,256,32
 fi
 task_type=classification
-input_train_file=${pre_path}/data/cv/mnist/train.tfrecord
-output_path=${pre_path}/output/${model_name}
-batch_size=128
-dropout=0.8
-lr=0.001
-input_size=784
-display_step=200
+model_path=${pre_path}/output/${model_name}
+test_file=${pre_path}/data/cv/mnist/test.tfrecord
+result_file=${pre_path}/data/cv/mnist/test_result.txt
 
 
-echo 'model '${model_name}' is training...'
+echo 'model '${model_name}' is inferring...'
 
-python3 ${pre_path}/src/models/dl/dnn_trainer.py \
+python3 ${pre_path}/src/models/dl/dnn_predictor.py \
     --task-type ${task_type} \
     --model-name ${model_name} \
-    --input ${input_train_file} \
-    --output ${output_path} \
-    --epochs ${epoch} \
-    --batch-size ${batch_size} \
-    --dropout ${dropout} \
-    --lr ${lr} \
-    --input-size ${input_size} \
-    --layers ${layers} \
-    --display-step ${display_step}
+    --model-path ${model_path} \
+    --input ${test_file} \
+    --output ${result_file}

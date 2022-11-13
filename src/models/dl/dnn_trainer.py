@@ -55,7 +55,7 @@ class DnnTrainer(object):
             tables_initner = tf.tables_initializer()
             sess.run(variables_initner)
             sess.run(tables_initner)
-            test_x, test_y = model.make_test_batch(test_file)
+            test_x, test_y = model.make_test_batch(test_file, record_type='mnist', size=10000)
             t_x, t_y = sess.run([test_x, test_y])
             for epoch in range(model.epochs):
                 _x, _y = model.make_train_batch(train_file)  # must in epoch loop, not in step loop
@@ -81,6 +81,10 @@ class DnnTrainer(object):
                 else:
                     loss, acc = model.eval(sess, t_x, t_y)
                     print('==========eval loss:{0}, eval acc:{1}, epoch:{2}======'.format(loss, acc, epoch))
+
+            input_feed = {"input_x": model.X, "input_y": model.Y}
+            output_feed = {"y_sm": model.out}
+            model.save_model_pb(sess, input_feed, output_feed)
 
     def train_unsupervised(self, model):
         """
@@ -115,7 +119,7 @@ class DnnTrainer(object):
 
 def main(_):
     """模型训练程序运行入口"""
-    task_description = 'Dnn Model Train Task!'
+    task_description = 'Dnn Model Train Task With Session Mode!'
     parser = arg_parse(task_description)
     args = parser.parse_args()
     print(args)

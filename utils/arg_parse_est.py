@@ -1,12 +1,13 @@
 """
-==========================
-# -*- coding: utf8 -*-
-# @Author   : louiss007
-# @Time     : 2022/10/7 14:28
-# @FileName : arg_parse.py
-# @Email    : quant_master2000@163.com
-==========================
+======================
+# -*-coding: utf8-*-
+# @Author  : louiss007
+# @Time    : 22-10-22 下午5:40
+# @FileName: arg_parse_est.py
+# @Email   : quant_master2000@163.com
+======================
 """
+
 import argparse
 
 
@@ -38,8 +39,6 @@ def arg_parse(task_description):
                         help='input training data file')
     parser.add_argument('--output', type=str, required=True, metavar='output',
                         help='output path for saving model')
-    parser.add_argument('--model-path', type=str, metavar='model_path',
-                        help='model for predict task')
     parser.add_argument('--display-step', type=int, default=200, metavar='N',
                         help='how many steps to display training process (default: 200)')
     return parser

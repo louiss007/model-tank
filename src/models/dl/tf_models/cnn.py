@@ -26,8 +26,8 @@ class CnnModel(Model):
             self.loss, self.train_op, self.accuracy = self.build_model()
 
     def init_net(self):
-        self.X = tf.placeholder(tf.float32, [None, self.layers[0]])
-        self.Y = tf.placeholder(tf.float32, [None, self.nclass])
+        self.X = tf.placeholder(tf.float32, [None, self.layers[0]], name='input_x')
+        self.Y = tf.placeholder(tf.float32, [None, self.nclass], name='input_y')
         # Store layers weight & bias
         self.weights = {
             # 5x5 conv, 1 input, 32 outputs
@@ -84,4 +84,3 @@ class CnnModel(Model):
     def maxpool2d(self, x, k=2, name=None):
         # MaxPool2D wrapper
         return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME', name=name)
-

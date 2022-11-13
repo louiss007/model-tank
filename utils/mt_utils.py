@@ -12,6 +12,11 @@ import codecs
 import tensorflow as tf
 import os
 
+"""
+# note:
+# frequent funcs for model-tank repo 
+"""
+
 
 def shell_cmd(cmd):
     ret = os.system(cmd)
@@ -52,3 +57,8 @@ def get_dataset_from_csv(csv_file, target_col, batch_size, feat_cols=None):
           ignore_errors=True
         )
     return ds
+
+
+def build_int_feature(values):
+    f = tf.train.Feature(int64_list=tf.train.Int64List(value=values))
+    return f
