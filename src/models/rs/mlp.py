@@ -2,35 +2,24 @@
 ======================
 # -*-coding: utf8-*-
 # @Author  : louiss007
-# @Time    : 22-9-19 下午11:20
-# @FileName: wnd.py
+# @Time    : 22-12-11 下午5:11
+# @FileName: mlp.py
 # @Email   : quant_master2000@163.com
 ======================
 """
 import tensorflow as tf
 import json
-import itertools
-import pandas as pd
-from src.models.rs.dnn_linear_combined import Net
 from src.models.rs.rs_model import Model
 
 
-"""
-TODO:
-how does train wnd model with two learning algorithms ftrl and adam in tf.Estimator?
-"""
-
-
-class WideAndDeep(Model):
-
+class MLP(Model):
     def __init__(self, args, task_type):
         Model.__init__(self, args, task_type)
         self.model_type = None
         self.warm_start_from = None
         self.fe_name2fe_size = {}
         self.input_size = 0
-        self.wide_columns, self.deep_columns = self.get_feature_columns()
-        self.net = Net(self.fe_name2fe_size, self.layers, self.nclass, mode=None)
+        self.deep_columns = self.get_feature_columns()
 
     def get_feature_columns(self, config_file=None):
         feat_type_map = {
@@ -46,8 +35,6 @@ class WideAndDeep(Model):
         else:
             feat_list = json.load(open(config_file))
 
-        base_columns = []
-        tmp_cross_columns = []
         deep_columns = []
         for item in feat_list:
             col_type = item.get('col_type', 'dense')
@@ -62,24 +49,15 @@ class WideAndDeep(Model):
                 # category feat with encoded, feat value has been int
                 num_buckets = item.get('num_buckets')
                 d_value = item.get('default_value', -1)
-                print('d_type_identity:{}, {}, {}'.format(fe_name, d_value, type(d_value)))
                 feat_column = tf.feature_column.categorical_column_with_identity(
                     fe_name, num_buckets=num_buckets, default_value=d_value
                 )
-
-                if col_type == 'sparse-onehot':
-                    tmp_cross_columns.append(feat_column)
-
                 feat_column = tf.feature_column.indicator_column(feat_column)   # trans to one-hot
                 size = num_buckets
             elif fe_tran == 'categorical_column_with_vocabulary_list':
                 # category feat with finite feat values, which values can't too much
                 vocab_list = item.get('vocab_list')
                 feat_column = tf.feature_column.categorical_column_with_vocabulary_list(fe_name, vocab_list, fe_type)
-
-                if col_type == 'sparse-onehot':
-                    tmp_cross_columns.append(feat_column)
-
                 feat_column = tf.feature_column.indicator_column(feat_column)   # trans to one-hot
                 size = len(vocab_list)
             else:
@@ -93,74 +71,40 @@ class WideAndDeep(Model):
             # self.feat_map.setdefault(fe_name, feat_column)
             self.fe_name2fe_size.setdefault(fe_name, size)
             self.input_size += size
-
-            if col_type == 'sparse-onehot':
-                base_columns.append(feat_column)
             deep_columns.append(feat_column)
-
-        cross_feats = list(itertools.combinations(tmp_cross_columns, 2))
-        cross_columns = []
-        for kv in cross_feats:
-            feat_1 = kv[0]
-            feat_2 = kv[1]
-            feat_1_size = self.fe_name2fe_size.get(feat_1.name)
-            feat_2_size = self.fe_name2fe_size.get(feat_2.name)
-
-            cross_feat = tf.feature_column.crossed_column([feat_1, feat_2], feat_1_size * feat_2_size)
-
-            self.fe_name2fe_size.setdefault(cross_feat.name, feat_1_size * feat_2_size)
-
-            cross_feat = tf.feature_column.indicator_column(cross_feat)
-            cross_columns.append(cross_feat)
-        wide_columns = base_columns + cross_columns
-        return wide_columns, deep_columns
-
-    # sparse
-    def get_feat_embedding(self):
-        pass
-
-    # one-hot
-    def get_feat_onehot(self):
-        pass
-
-    # numeric
-    def get_feat_numeric(self):
-        pass
-
-    def input_fn(self, data_file, batch_size, is_train=True):
-        """估算器的输入函数."""
-        train = pd.read_csv(data_file).dropna()
-        # train, test = train_test_split(df, test_size=test_size, random_state=1)
-        train_y = train.pop("label")
-        # train_to_dict = train.to_dict(orient='list')
-        # train_x = {key: train_to_dict.get(key) for key in self.feat_map}
-        if is_train:
-            # from_tensor_slices 从内存引入数据
-            dataset = tf.data.Dataset.from_tensor_slices((train.to_dict(orient='list'), train_y))
-        else:
-            dataset = tf.data.Dataset.from_tensor_slices(train.to_dict(orient='list'))
-
-        if is_train:  # 对数据进行乱序操作
-            dataset = dataset.shuffle(buffer_size=batch_size)  # 越大shuffle程度越大
-        dataset = dataset.batch(batch_size).prefetch(1)  # 预取数据,buffer_size=1 在多数情况下就足够了
-        return dataset
+        return deep_columns
 
     def model_fn(self, features, labels, mode, params=None):
-        wide_logit_fn = self.build_wide_logit_fn(self.wide_columns, mode)
-        wide_logits = wide_logit_fn(features)
-        print('wide_logits: {}'.format(wide_logits))
-
-        deep_logit_fn = self.build_deep_logit_fn(self.deep_columns, mode)
-        deep_logits = deep_logit_fn(features)
-
-        if self.model_type == 'wide':
-            logits = wide_logits
-        elif self.model_type == 'deep':
-            logits = deep_logits
+        labels = tf.reshape(labels, shape=[-1, 1])
+        input_layer = tf.feature_column.input_layer(features, self.deep_columns)
+        for unit in self.layers:
+            input_layer = tf.layers.dense(
+                input_layer,
+                unit,
+                activation=tf.nn.relu
+            )
+            input_layer = tf.layers.dropout(
+                input_layer,
+                rate=self.dropout,
+                training=mode == tf.estimator.ModeKeys.TRAIN
+            )
+        if self.nclass == 2:
+            logits = tf.layers.dense(
+                input_layer,
+                self.nclass-1,
+                activation=None,
+                bias_initializer=None
+            )
         else:
-            # default model is wide and deep
-            logits = wide_logits + deep_logits
+            # n > 2 classification
+            logits = tf.layers.dense(
+                input_layer,
+                self.nclass,
+                activation=None,
+                bias_initializer=None
+            )
 
+        # predict
         if mode == tf.estimator.ModeKeys.PREDICT:
             if self.nclass == 2:
                 prob = tf.nn.sigmoid(logits, name='y')
@@ -174,11 +118,12 @@ class WideAndDeep(Model):
                 predictions=predictions
             )
 
+        # train
         if mode == tf.estimator.ModeKeys.TRAIN:
             if self.nclass == 2:
                 loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
                 optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-                train_op = optimizer.minimize(loss, global_step=self.global_step)
+                train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
             else:
                 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
                 optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
@@ -188,34 +133,42 @@ class WideAndDeep(Model):
                 loss=loss,
                 train_op=train_op
             )
+
+        # evaluate
         if self.nclass == 2:
+            loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
             preds = tf.nn.sigmoid(logits)
             auc = tf.metrics.auc(labels, tf.sigmoid(preds))
             metrics = {'auc': auc}
         else:
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
             preds = tf.nn.softmax(logits)
             p = tf.metrics.precision(labels, preds)
             r = tf.metrics.recall(labels, preds)
             f1 = 2 * p * r / (p + r)
             metrics = {'f1': f1}
-        
+
         return tf.estimator.EstimatorSpec(
             mode=mode,
+            loss=loss,
             eval_metric_ops=metrics
         )
 
-    def build_wide_logit_fn(self, feature_columns, mode):
-
-        def wide_logit_fn(features):
-            wide_logits = self.net.wide_net(features, feature_columns)
-            return wide_logits
-
-        return wide_logit_fn
-
-    def build_deep_logit_fn(self, feature_columns, mode):
-
-        def deep_logit_fn(features):
-            deep_logits = self.net.deep_net(features, feature_columns)
-            return deep_logits
-
-        return deep_logit_fn
+    # def input_fn(self, data_file, batch_size, is_train=True):
+    #     """估算器的输入函数."""
+    #     train = pd.read_csv(data_file).dropna()
+    #     # train, test = train_test_split(df, test_size=test_size, random_state=1)
+    #     train_y = train.pop("label")
+    #     train_y = train_y.astype(np.float32)
+    #     # train_to_dict = train.to_dict(orient='list')
+    #     # train_x = {key: train_to_dict.get(key) for key in self.feat_map}
+    #     if is_train:
+    #         # from_tensor_slices 从内存引入数据
+    #         dataset = tf.data.Dataset.from_tensor_slices((train.to_dict(orient='list'), train_y))
+    #     else:
+    #         dataset = tf.data.Dataset.from_tensor_slices(train.to_dict(orient='list'))
+    #
+    #     if is_train:  # 对数据进行乱序操作
+    #         dataset = dataset.shuffle(buffer_size=batch_size)  # 越大shuffle程度越大
+    #     dataset = dataset.batch(batch_size).repeat(self.epochs).prefetch(1)  # 预取数据,buffer_size=1 在多数情况下就足够了
+    #     return dataset

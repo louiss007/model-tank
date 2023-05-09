@@ -17,8 +17,8 @@ class Model(object):
     def __init__(self, args, task_type=None):
         """
         模型构建初始化
-        :param args:
-        :param task_type:
+        :param args: hyper params and model params
+        :param task_type: classification or regression
         """
         self.weights = {}
         self.biases = {}
@@ -75,10 +75,11 @@ class Model(object):
         """构建模型，定义损失函数，模型优化器，模型度量等算子"""
         y_hat = self.forward(self.X)
         if self.task_type is None or self.task_type == 'classification':
-            self.out = tf.nn.softmax(logits=y_hat, name='y_sm')
             self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y_hat, labels=self.Y))
             optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
+
+            self.out = tf.nn.softmax(logits=y_hat, name='y_sm')
             corr_pred = tf.equal(tf.argmax(self.out, 1), tf.argmax(self.Y, 1))
             self.accuracy = tf.reduce_mean(tf.cast(corr_pred, tf.float32))
             return self.loss, self.train_op, self.accuracy
@@ -214,7 +215,7 @@ class Model(object):
     def parse_tfrecord(self, tfrecord, record_type='mnist'):
         """
         通过解析TFrecord格式样本，返回x和y
-        :param tfrecord: tfrecord格式样本
+        :param tfrecord: image tfrecord格式样本
         :param record_type: cv/nlp/rs/mnist
         :return:
         """

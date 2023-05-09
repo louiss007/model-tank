@@ -3,7 +3,7 @@
 # -*-coding: utf8-*-
 # @Author  : louiss007
 # @Time    : 22-10-21 下午11:29
-# @FileName: dt_model.py
+# @FileName: sm_model.py
 # @Email   : quant_master2000@163.com
 ======================
 """
@@ -244,34 +244,31 @@ class DtModel(object):
         label = features.pop("label")
         return features, label
 
-    def make_train_dataset(self,
-                           file_path=None,
-                           batch_size=128):
-        all_train_files = tf.gfile.Glob(file_path)
-        if self.is_cluster:
-            # 集群上训练需要切分数据
-            train_worker_num = len(self.ps_worker.split(","))
-            hash_id = self.task_index if self.job_name == "worker" else train_worker_num - 1
-            file_shards = [
-                train_file for i, train_file in enumerate(all_train_files)
-                if i % train_worker_num == hash_id
-            ]
-            dataset = tf.data.TFRecordDataset(file_shards)
+    def input_fn(self,
+                 file_path,
+                 mode,
+                 batch_size=128):
+        data_files = tf.gfile.Glob(file_path)
+        if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
+            if self.is_cluster:
+                # 集群上训练需要切分数据
+                train_worker_num = len(self.ps_worker.split(","))
+                hash_id = self.task_index if self.job_name == "worker" else train_worker_num - 1
+                file_shards = [
+                    train_file for i, train_file in enumerate(data_files)
+                    if i % train_worker_num == hash_id
+                ]
+                dataset = tf.data.TFRecordDataset(file_shards)
+            else:
+                dataset = tf.data.TFRecordDataset(data_files)
+
+            dataset = dataset.shuffle(batch_size * 10)
+            dataset = dataset.map(self.parse_example, num_parallel_calls=4)
+            dataset = dataset.batch(batch_size, drop_remainder=True).repeat(self.epochs).prefetch(1)
         else:
-            dataset = tf.data.TFRecordDataset(all_train_files)
-
-        dataset = dataset.shuffle(batch_size * 10)
-        dataset = dataset.map(self.parse_example, num_parallel_calls=4)
-        dataset = dataset.batch(batch_size, drop_remainder=True).repeat(self.epochs).prefetch(1)
-        return dataset
-
-    def make_test_dataset(self,
-                          file_path=None,
-                          batch_size=128):
-        test_files = tf.gfile.Glob(file_path)
-        dataset = tf.data.TFRecordDataset(test_files)
-        dataset = dataset.map(self.parse_example, num_parallel_calls=4)
-        dataset = dataset.batch(batch_size).repeat()
+            dataset = tf.data.TFRecordDataset(file_path)
+            dataset = dataset.map(self.parse_example, num_parallel_calls=4)
+            dataset = dataset.batch(batch_size).repeat()
         return dataset
 
     @staticmethod

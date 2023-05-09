@@ -27,14 +27,25 @@ class FnnModel(Model):
         self.X = tf.placeholder(tf.float32, [None, self.layers[0]], name='input_x')
         self.Y = tf.placeholder(tf.float32, [None, self.nclass], name='input_y')
         if len(self.layers) != 1:
+            # first layer is input layer, others are hidden layer
             for i in range(1, len(self.layers)):
                 init_method = np.sqrt(2.0 / (self.layers[i - 1] + self.layers[i]))
-                self.weights['h' + str(i)] = tf.Variable(np.random.normal(
-                    loc=0, scale=init_method, size=(self.layers[i - 1], self.layers[i])),
-                    dtype=np.float32)
+                self.weights['h' + str(i)] = tf.Variable(
+                    np.random.normal(
+                        loc=0,
+                        scale=init_method,
+                        size=(self.layers[i - 1], self.layers[i])
+                    ),
+                    dtype=np.float32
+                )
                 self.biases['b' + str(i)] = tf.Variable(
-                    np.random.normal(loc=0, scale=init_method, size=(1, self.layers[i])),
-                    dtype=np.float32)
+                    np.random.normal(
+                        loc=0,
+                        scale=init_method,
+                        size=(1, self.layers[i])
+                    ),
+                    dtype=np.float32
+                )
             self.weights['out'] = tf.Variable(tf.random_normal([self.layers[-1], self.nclass]))
             self.biases['out'] = tf.Variable(tf.random_normal([self.nclass]))
 

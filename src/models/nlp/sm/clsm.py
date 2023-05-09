@@ -7,8 +7,7 @@
 # @Email   : quant_master2000@163.com
 ======================
 """
-from src.models.nlp.dt_model import DtModel
-import tensorflow as tf
+from nlp.sm.sm_model import DtModel
 
 
 class ClsmModel(DtModel):

@@ -3,15 +3,14 @@
 # -*-coding: utf8-*-
 # @Author  : louiss007
 # @Time    : 22-10-19 上午12:00
-# @FileName: nlp_sm_trainer_est.py
+# @FileName: nlp_sm_est_trainer.py
 # @Email   : quant_master2000@163.com
 ======================
 """
 import tensorflow as tf
 import os
-from utils.tf_arg_parse import tf_arg_parse
-from src.models.nlp.dssm import DssmModel
-from src.models.nlp.clsm import ClsmModel
+from src.models.nlp.sm.dssm import DssmModel
+from src.models.nlp.sm.clsm import ClsmModel
 
 
 flags = tf.flags
@@ -49,7 +48,7 @@ flags.DEFINE_integer("display_steps", 100, "saving checkpoint of steps")
 args = flags.FLAGS
 
 
-class DnnTrainerEst(object):
+class NlpSmEstTrainer(object):
 
     def __init__(self, task_type):
         self.task_type = task_type
@@ -72,8 +71,9 @@ class DnnTrainerEst(object):
         )
 
         self.classifier.train(
-            input_fn=lambda: model.make_train_dataset(
+            input_fn=lambda: model.input_fn(
                 model.input,
+                tf.estimator.ModeKeys.TRAIN,
                 model.batch_size
             ),
             max_steps=1000
@@ -96,16 +96,18 @@ class DnnTrainerEst(object):
         )
 
         train_spec = tf.estimator.TrainSpec(
-            input_fn=lambda: model.make_train_dataset(
+            input_fn=lambda: model.input_fn(
                 model.input,
+                tf.estimator.ModeKeys.TRAIN,
                 model.batch_size
             ),
             max_steps=1000
         )
 
         eval_spec = tf.estimator.EvalSpec(
-            input_fn=lambda: model.make_test_dataset(
+            input_fn=lambda: model.input_fn(
                 model.test_file_path,
+                tf.estimator.ModeKeys.EVAL,
                 model.batch_size
             ),
             start_delay_secs=60,
@@ -137,7 +139,7 @@ def main(_):
     if tf.gfile.Exists(model.output):
         tf.gfile.DeleteRecursively(model.output)
     print("==========total train steps=========: ", model.train_steps * model.epochs)
-    trainer = DnnTrainerEst(task_type)
+    trainer = NlpSmEstTrainer(task_type)
     trainer.train(model)
 
 

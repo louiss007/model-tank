@@ -37,6 +37,8 @@ def arg_parse(task_description):
 
     parser.add_argument('--input', type=str, required=True, metavar='input',
                         help='input training data file')
+    parser.add_argument('--eval-file', type=str, required=True, metavar='eval',
+                        help='input eval data file')
     parser.add_argument('--output', type=str, required=True, metavar='output',
                         help='output path for saving model')
     parser.add_argument('--display-step', type=int, default=200, metavar='N',
